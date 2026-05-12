@@ -1,0 +1,49 @@
+name: Deploy — Staging
+
+on:
+  repository_dispatch:
+    types: [deploy-staging]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image tag to deploy (default: staging)'
+        required: false
+        default: 'staging'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Checkout infra repo
+        uses: actions/checkout@v4
+
+      - name: Set image tag
+        id: tag
+        run: |
+          TAG="${{ github.event.inputs.image_tag || 'staging' }}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Deploy to Hetzner staging
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/decisionmesh/infra
+
+            echo "Pulling latest staging image..."
+            docker pull ghcr.io/thirupala/decisionmesh:${{ steps.tag.outputs.tag }}
+
+            sed -i 's|API_IMAGE=.*|API_IMAGE=ghcr.io/thirupala/decisionmesh:${{ steps.tag.outputs.tag }}|' .env.staging
+
+            echo "Recreating staging API..."
+            docker compose -f backend/docker-compose.staging.yml --env-file .env.staging \
+              up -d --no-deps --force-recreate api
+
+            sleep 15
+            echo "=== Staging API logs ==="
+            docker logs dm-api-staging --tail 20

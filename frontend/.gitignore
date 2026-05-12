@@ -1,0 +1,22 @@
+# Environment files
+.env.local
+.env.*.local
+.env.staging
+.env.production
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Vite
+.vite/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

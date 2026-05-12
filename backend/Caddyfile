@@ -1,0 +1,22 @@
+# Caddyfile — shared gateway (prod + staging on same box)
+# Caddy auto-provisions TLS via Let's Encrypt.
+
+# Production API
+api.decimeshi.com {
+    reverse_proxy dm-api:8080
+    log {
+        output stderr
+        format json
+        level  WARN
+    }
+}
+
+# Staging API
+staging.decimeshi.com {
+    reverse_proxy dm-api-staging:8081
+    log {
+        output stderr
+        format json
+        level  WARN
+    }
+}

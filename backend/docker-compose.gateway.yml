@@ -1,0 +1,44 @@
+# ============================================================
+# docker-compose.gateway.yml — shared reverse proxy
+#
+# Single Caddy instance serving both prod and staging on one box.
+# Routes:
+#   api.decimeshi.com     → dm-api:8080        (prod)
+#   staging.decimeshi.com → dm-api-staging:8081 (staging)
+#
+# Start order:
+#   1. Start prod:    docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d
+#   2. Start staging: docker compose -f docker-compose.staging.yml --env-file .env.staging up -d
+#   3. Start gateway: docker compose -f docker-compose.gateway.yml up -d
+# ============================================================
+
+name: decisionmesh-gateway
+
+networks:
+  prod_net:
+    external: true
+    name: decisionmesh_internal
+  staging_net:
+    external: true
+    name: decisionmesh-staging_internal
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: dm-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - prod_net
+      - staging_net
+
+volumes:
+  caddy-data:
+  caddy-config:

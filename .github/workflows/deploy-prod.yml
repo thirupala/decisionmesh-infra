@@ -1,0 +1,52 @@
+name: Deploy — Production
+
+on:
+  repository_dispatch:
+    types: [deploy-prod]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image tag to deploy (default: latest)'
+        required: false
+        default: 'latest'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production      # requires manual approval in GitHub
+
+    steps:
+      - name: Checkout infra repo
+        uses: actions/checkout@v4
+
+      - name: Set image tag
+        id: tag
+        run: |
+          TAG="${{ github.event.inputs.image_tag || 'latest' }}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Deploy to Hetzner production
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/decisionmesh/infra
+
+            echo "Pulling latest prod image..."
+            docker pull ghcr.io/thirupala/decisionmesh:${{ steps.tag.outputs.tag }}
+
+            sed -i 's|API_IMAGE=.*|API_IMAGE=ghcr.io/thirupala/decisionmesh:${{ steps.tag.outputs.tag }}|' .env.prod
+
+            echo "Unsealing OpenBao..."
+            bash scripts/unseal-prod.sh
+
+            echo "Recreating prod API..."
+            docker compose -f backend/docker-compose.yml -f backend/docker-compose.prod.yml \
+              --env-file .env.prod up -d --no-deps --force-recreate api
+
+            sleep 15
+            echo "=== Prod API logs ==="
+            docker logs dm-api --tail 20

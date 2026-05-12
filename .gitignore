@@ -1,0 +1,13 @@
+# Actual env files — NEVER commit these
+.env.local
+.env.staging
+.env.prod
+secrets/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
