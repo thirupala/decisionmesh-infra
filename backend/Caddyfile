@@ -20,3 +20,10 @@ staging.decimeshi.com {
         level  WARN
     }
 }
+api.decimeshi.com {
+    reverse_proxy dm-api:8080
+}
+
+api-staging.decimeshi.com {
+    reverse_proxy dm-api-staging:8081
+}
