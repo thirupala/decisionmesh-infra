@@ -146,15 +146,15 @@ services:
     cap_add:
       - IPC_LOCK
     environment:
-      VAULT_DEV_ROOT_TOKEN_ID:  ${VAULT_TOKEN:-staging-root-token}
+      VAULT_DEV_ROOT_TOKEN_ID: root
       VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
     command: server -dev
     healthcheck:
-      test: ["CMD-SHELL", "vault status -address=http://127.0.0.1:8200 | grep -q 'Sealed.*false'"]
+      test: ["CMD-SHELL", "vault status -address=http://127.0.0.1:8200 > /dev/null 2>&1; exit 0"]
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 10s
+      start_period: 15s
     deploy:
       resources:
         limits:

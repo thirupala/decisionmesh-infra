@@ -1,17 +1,4 @@
-# ============================================================
-# docker-compose.prod.yml — production overlay
-# Extends docker-compose.yml.
-#
-# Start:
-#   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
-#     --env-file .env.prod up -d
-#
-# First-time setup:
-#   1. Fill .env.prod (copy from .env.prod.example)
-#   2. Run: scripts/init-openbao-prod.sh
-#   3. Run: scripts/import-bao-secrets.sh --env prod
-#   After every restart: scripts/unseal-prod.sh
-# ============================================================
+name: decisionmesh
 
 networks:
   internal:
@@ -19,9 +6,6 @@ networks:
 
 services:
 
-  # ----------------------------------------------------------
-  # API
-  # ----------------------------------------------------------
   api:
     image: ${API_IMAGE:?API_IMAGE must be set in .env.prod}
     container_name: dm-api
@@ -47,9 +31,6 @@ services:
     networks:
       - internal
 
-  # ----------------------------------------------------------
-  # Infrastructure overrides
-  # ----------------------------------------------------------
   postgres:
     restart: unless-stopped
     volumes:
@@ -75,12 +56,6 @@ services:
         limits:
           memory: 768m
 
-  # ----------------------------------------------------------
-  # OpenBao — server mode, persistent file storage
-  # Must be init'd once, then unsealed after every restart.
-  # Run: scripts/init-openbao-prod.sh   (first time only)
-  # Run: scripts/unseal-prod.sh         (after every restart)
-  # ----------------------------------------------------------
   openbao:
     restart: unless-stopped
     command: server -config=/openbao/config/openbao.hcl
