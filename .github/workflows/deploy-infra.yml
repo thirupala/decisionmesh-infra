@@ -14,7 +14,6 @@ on:
 jobs:
   deploy-infra:
     runs-on: ubuntu-latest
-    environment: production
 
     steps:
       - name: Checkout infra repo
