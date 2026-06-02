@@ -1,0 +1,100 @@
+groups:
+
+  - name: decisionmesh-availability
+    rules:
+
+      - alert: APIDown
+        expr: up{job=~"decisionmesh-api.*"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "DecisionMesh API is DOWN"
+          description: "{{ $labels.job }} has been unreachable for more than 1 minute."
+
+      - alert: HighErrorRate
+        expr: |
+          rate(http_server_requests_seconds_count{job=~"decisionmesh-api.*", status=~"5.."}[5m])
+          /
+          rate(http_server_requests_seconds_count{job=~"decisionmesh-api.*"}[5m])
+          > 0.05
+        for: 2m
+        labels:
+          severity: high
+        annotations:
+          summary: "High HTTP error rate on {{ $labels.job }}"
+          description: "Error rate is {{ $value | humanizePercentage }}"
+
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.99,
+            rate(http_server_requests_seconds_bucket{job=~"decisionmesh-api.*"}[5m])
+          ) > 2
+        for: 5m
+        labels:
+          severity: high
+        annotations:
+          summary: "High P99 latency on {{ $labels.job }}"
+          description: "P99 latency is {{ $value | humanizeDuration }}"
+
+  - name: decisionmesh-jvm
+    rules:
+
+      - alert: HighHeapUsage
+        expr: |
+          jvm_memory_used_bytes{job=~"decisionmesh-api.*", area="heap"}
+          /
+          jvm_memory_max_bytes{job=~"decisionmesh-api.*", area="heap"}
+          > 0.80
+        for: 5m
+        labels:
+          severity: high
+        annotations:
+          summary: "High JVM heap usage on {{ $labels.job }}"
+          description: "Heap usage is {{ $value | humanizePercentage }}"
+
+      - alert: CriticalHeapUsage
+        expr: |
+          jvm_memory_used_bytes{job=~"decisionmesh-api.*", area="heap"}
+          /
+          jvm_memory_max_bytes{job=~"decisionmesh-api.*", area="heap"}
+          > 0.95
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical JVM heap usage on {{ $labels.job }} — OOM imminent"
+          description: "Heap usage is {{ $value | humanizePercentage }}"
+
+      - alert: HighThreadCount
+        expr: jvm_threads_live_threads{job=~"decisionmesh-api.*"} > 500
+        for: 5m
+        labels:
+          severity: high
+        annotations:
+          summary: "High thread count on {{ $labels.job }}"
+          description: "Live threads: {{ $value }}"
+
+  - name: decisionmesh-kafka
+    rules:
+
+      - alert: KafkaProducerErrors
+        expr: rate(kafka_producer_record_error_total{job=~"decisionmesh-api.*"}[5m]) > 0
+        for: 2m
+        labels:
+          severity: high
+        annotations:
+          summary: "Kafka producer errors on {{ $labels.job }}"
+          description: "Kafka producer is failing — check broker connectivity"
+
+  - name: decisionmesh-database
+    rules:
+
+      - alert: DatabasePoolExhausted
+        expr: sql_pool_ratio{job=~"decisionmesh-api.*"} > 0.90
+        for: 2m
+        labels:
+          severity: high
+        annotations:
+          summary: "Database connection pool near exhaustion on {{ $labels.job }}"
+          description: "Pool usage is {{ $value | humanizePercentage }}"

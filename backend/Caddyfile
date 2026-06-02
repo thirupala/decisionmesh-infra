@@ -1,7 +1,6 @@
-# Caddyfile — shared gateway (prod + staging on same box)
-
 api.decimeshi.com {
     reverse_proxy dm-api:8080
+    header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
     log {
         output stderr
         format json
@@ -11,6 +10,17 @@ api.decimeshi.com {
 
 api-staging.decimeshi.com {
     reverse_proxy dm-api-staging:8081
+    header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    log {
+        output stderr
+        format json
+        level WARN
+    }
+}
+
+grafana.decimeshi.com {
+    reverse_proxy decisionmesh-grafana:3000
+    header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
     log {
         output stderr
         format json
