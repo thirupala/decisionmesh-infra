@@ -66,6 +66,8 @@ services:
 
   openbao:
     image: openbao/openbao:2
+    ports:
+      - "8200:8200"
     cap_add:
       - IPC_LOCK
     healthcheck:

@@ -1,0 +1,120 @@
+{
+  "title": "DecisionMesh — AI Control Plane",
+  "uid": "decisionmesh-main",
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1, "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+      "type": "stat", "title": "API Uptime",
+      "datasource": "Prometheus",
+      "targets": [{ "expr": "up{job=\"decisionmesh-api\"}", "legendFormat": "UP" }],
+      "fieldConfig": { "defaults": { "mappings": [{ "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }], "thresholds": { "steps": [{ "color": "red", "value": 0 }, { "color": "green", "value": 1 }] } } }
+    },
+    {
+      "id": 2, "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
+      "type": "stat", "title": "HTTP Req Rate (req/s)",
+      "datasource": "Prometheus",
+      "targets": [{ "expr": "rate(http_server_requests_seconds_count{job=\"decisionmesh-api\"}[1m])", "legendFormat": "req/s" }],
+      "fieldConfig": { "defaults": { "unit": "reqps", "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": 0 }, { "color": "yellow", "value": 50 }, { "color": "red", "value": 100 }] } } }
+    },
+    {
+      "id": 3, "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
+      "type": "stat", "title": "HTTP Error Rate (%)",
+      "datasource": "Prometheus",
+      "targets": [{ "expr": "100 * rate(http_server_requests_seconds_count{job=\"decisionmesh-api\",status=~\"5..\"}[5m]) / rate(http_server_requests_seconds_count{job=\"decisionmesh-api\"}[5m])", "legendFormat": "error %" }],
+      "fieldConfig": { "defaults": { "unit": "percent", "thresholds": { "steps": [{ "color": "green", "value": 0 }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 5 }] } } }
+    },
+    {
+      "id": 4, "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
+      "type": "stat", "title": "P99 Latency (ms)",
+      "datasource": "Prometheus",
+      "targets": [{ "expr": "histogram_quantile(0.99, rate(http_server_requests_seconds_bucket{job=\"decisionmesh-api\"}[5m])) * 1000", "legendFormat": "p99" }],
+      "fieldConfig": { "defaults": { "unit": "ms", "thresholds": { "steps": [{ "color": "green", "value": 0 }, { "color": "yellow", "value": 500 }, { "color": "red", "value": 2000 }] } } }
+    },
+    {
+      "id": 5, "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
+      "type": "stat", "title": "JVM Heap Used",
+      "datasource": "Prometheus",
+      "targets": [{ "expr": "jvm_memory_used_bytes{area=\"heap\",job=\"decisionmesh-api\"} / 1024 / 1024", "legendFormat": "MB" }],
+      "fieldConfig": { "defaults": { "unit": "decmbytes", "thresholds": { "steps": [{ "color": "green", "value": 0 }, { "color": "yellow", "value": 400 }, { "color": "red", "value": 600 }] } } }
+    },
+    {
+      "id": 6, "gridPos": { "x": 20, "y": 0, "w": 4, "h": 4 },
+      "type": "stat", "title": "JVM Threads",
+      "datasource": "Prometheus",
+      "targets": [{ "expr": "jvm_threads_live_threads{job=\"decisionmesh-api\"}", "legendFormat": "threads" }],
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [{ "color": "green", "value": 0 }, { "color": "yellow", "value": 200 }, { "color": "red", "value": 400 }] } } }
+    },
+    {
+      "id": 10, "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "type": "timeseries", "title": "HTTP Request Rate by Endpoint",
+      "datasource": "Prometheus",
+      "targets": [{ "expr": "rate(http_server_requests_seconds_count{job=\"decisionmesh-api\"}[1m])", "legendFormat": "{{method}} {{uri}} {{status}}" }],
+      "fieldConfig": { "defaults": { "unit": "reqps" } }
+    },
+    {
+      "id": 11, "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "type": "timeseries", "title": "HTTP Latency Percentiles",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "histogram_quantile(0.50, rate(http_server_requests_seconds_bucket{job=\"decisionmesh-api\"}[5m])) * 1000", "legendFormat": "p50" },
+        { "expr": "histogram_quantile(0.95, rate(http_server_requests_seconds_bucket{job=\"decisionmesh-api\"}[5m])) * 1000", "legendFormat": "p95" },
+        { "expr": "histogram_quantile(0.99, rate(http_server_requests_seconds_bucket{job=\"decisionmesh-api\"}[5m])) * 1000", "legendFormat": "p99" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ms" } }
+    },
+    {
+      "id": 20, "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "type": "timeseries", "title": "JVM Memory",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "jvm_memory_used_bytes{job=\"decisionmesh-api\",area=\"heap\"} / 1024 / 1024", "legendFormat": "Heap Used (MB)" },
+        { "expr": "jvm_memory_max_bytes{job=\"decisionmesh-api\",area=\"heap\"} / 1024 / 1024", "legendFormat": "Heap Max (MB)" },
+        { "expr": "jvm_memory_used_bytes{job=\"decisionmesh-api\",area=\"nonheap\"} / 1024 / 1024", "legendFormat": "Non-Heap Used (MB)" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "decmbytes" } }
+    },
+    {
+      "id": 21, "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+      "type": "timeseries", "title": "JVM GC Pause Time",
+      "datasource": "Prometheus",
+      "targets": [{ "expr": "rate(jvm_gc_pause_seconds_sum{job=\"decisionmesh-api\"}[1m])", "legendFormat": "{{cause}} {{action}}" }],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "id": 30, "gridPos": { "x": 0, "y": 20, "w": 8, "h": 6 },
+      "type": "timeseries", "title": "HTTP 4xx / 5xx Errors",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "rate(http_server_requests_seconds_count{job=\"decisionmesh-api\",status=~\"4..\"}[1m])", "legendFormat": "4xx" },
+        { "expr": "rate(http_server_requests_seconds_count{job=\"decisionmesh-api\",status=~\"5..\"}[1m])", "legendFormat": "5xx" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "lineStyle": { "fill": "solid" } } } }
+    },
+    {
+      "id": 31, "gridPos": { "x": 8, "y": 20, "w": 8, "h": 6 },
+      "type": "timeseries", "title": "JVM CPU Usage",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "process_cpu_usage{job=\"decisionmesh-api\"}", "legendFormat": "Process CPU" },
+        { "expr": "system_cpu_usage{job=\"decisionmesh-api\"}", "legendFormat": "System CPU" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 } }
+    },
+    {
+      "id": 32, "gridPos": { "x": 16, "y": 20, "w": 8, "h": 6 },
+      "type": "timeseries", "title": "JVM Threads",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "jvm_threads_live_threads{job=\"decisionmesh-api\"}", "legendFormat": "Live" },
+        { "expr": "jvm_threads_daemon_threads{job=\"decisionmesh-api\"}", "legendFormat": "Daemon" },
+        { "expr": "jvm_threads_peak_threads{job=\"decisionmesh-api\"}", "legendFormat": "Peak" }
+      ]
+    }
+  ],
+  "schemaVersion": 38,
+  "version": 1,
+  "tags": ["decisionmesh", "api", "jvm"]
+}

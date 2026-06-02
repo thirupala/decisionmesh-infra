@@ -11,3 +11,4 @@ Thumbs.db
 # IDE
 .idea/
 .vscode/
+scripts/import-bao-secrets.sh

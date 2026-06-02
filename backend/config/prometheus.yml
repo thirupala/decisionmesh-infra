@@ -1,0 +1,24 @@
+# ============================================================
+# prometheus.yml — DecisionMesh local monitoring
+# Place at: backend/config/prometheus.yml
+# ============================================================
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+  external_labels:
+    environment: local
+
+scrape_configs:
+
+  # Quarkus API — exposes /q/metrics (Prometheus format)
+  # Quarkus runs on host (not Docker) in local dev
+  - job_name: 'decisionmesh-api'
+    static_configs:
+      - targets: ['host.docker.internal:8080']
+    metrics_path: '/q/metrics'
+    scrape_interval: 10s
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

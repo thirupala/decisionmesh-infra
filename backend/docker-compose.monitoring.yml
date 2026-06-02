@@ -1,0 +1,86 @@
+# ============================================================
+# docker-compose.monitoring.yml — Local metrics stack
+# Prometheus + Grafana for local development
+#
+# Start alongside local infra:
+#   docker compose -f backend/docker-compose.local.yml \
+#                  -f backend/docker-compose.monitoring.yml \
+#                  --env-file backend/.env.local up -d
+#
+# Or start monitoring only:
+#   docker compose -f backend/docker-compose.monitoring.yml up -d
+#
+# Access:
+#   Prometheus : http://localhost:9090
+#   Grafana    : http://localhost:3001  (admin / decisionmesh)
+# ============================================================
+
+name: decisionmesh-monitoring
+
+networks:
+  monitoring:
+    name: decisionmesh-monitoring
+    driver: bridge
+
+services:
+
+  # ----------------------------------------------------------
+  # Prometheus — metrics collection
+  # ----------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: decisionmesh-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    networks:
+      - monitoring
+
+  # ----------------------------------------------------------
+  # Grafana — metrics dashboard
+  # ----------------------------------------------------------
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: decisionmesh-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER:     admin
+      GF_SECURITY_ADMIN_PASSWORD: decisionmesh
+      GF_AUTH_ANONYMOUS_ENABLED:  "false"
+      GF_INSTALL_PLUGINS:         grafana-clock-panel,grafana-simple-json-datasource
+      GF_SERVER_ROOT_URL:         http://localhost:3001
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/decisionmesh.json
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    networks:
+      - monitoring
+
+volumes:
+  prometheus-data:
+  grafana-data:

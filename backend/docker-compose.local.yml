@@ -1,0 +1,180 @@
+# ============================================================
+# docker-compose.local.yml — Local infrastructure only
+# API runs directly via IntelliJ/quarkus:dev (not in Docker)
+#
+# Start infrastructure:
+#   docker compose -f backend/docker-compose.local.yml --env-file backend/.env.local up -d
+#
+# Stop:
+#   docker compose -f backend/docker-compose.local.yml --env-file backend/.env.local down
+#
+# Ports exposed to host (for Quarkus running locally):
+#   PostgreSQL : localhost:5432
+#   Redis      : localhost:6379
+#   Kafka      : localhost:9092
+#   OpenBao    : localhost:8200
+# ============================================================
+
+name: decisionmesh-local
+
+networks:
+  internal:
+    name: decisionmesh-local_internal
+    driver: bridge
+
+services:
+
+  # ----------------------------------------------------------
+  # PostgreSQL
+  # ----------------------------------------------------------
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: decisionmesh-local-postgres-1
+    restart: unless-stopped
+    ports:
+      - "5432:5432"        # exposed so Quarkus on host can connect
+    environment:
+      POSTGRES_DB:       ${DB_NAME:-decisionmesh}
+      POSTGRES_USER:     ${DB_USER:-decisionmesh}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-decisionmesh}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-decisionmesh} -d ${DB_NAME:-decisionmesh}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    volumes:
+      - postgres-local-data:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    networks:
+      - internal
+
+  # ----------------------------------------------------------
+  # Redis
+  # ----------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: decisionmesh-local-redis-1
+    restart: unless-stopped
+    ports:
+      - "6379:6379"        # exposed so Quarkus on host can connect
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:-decisionmesh}
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-decisionmesh}
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 320m
+    networks:
+      - internal
+
+  # ----------------------------------------------------------
+  # Kafka — KRaft mode
+  # Advertises on both internal (kafka:9092) and
+  # external (localhost:9092) so Quarkus on the host can connect
+  # ----------------------------------------------------------
+  kafka:
+    image: apache/kafka:3.7.0
+    container_name: decisionmesh-local-kafka-1
+    restart: unless-stopped
+    ports:
+      - "9092:9092"        # exposed so Quarkus on host can connect
+    environment:
+      KAFKA_NODE_ID:                                  1
+      KAFKA_PROCESS_ROLES:                            broker,controller
+      KAFKA_LISTENERS:                                PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,EXTERNAL://0.0.0.0:9094
+      KAFKA_ADVERTISED_LISTENERS:                     PLAINTEXT://kafka:9092,EXTERNAL://localhost:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES:                CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP:           PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS:                 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR:         1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR:            1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE:                "true"
+      KAFKA_CLUSTER_ID:                               ${KAFKA_CLUSTER_ID:?KAFKA_CLUSTER_ID must be set in .env.local}
+      KAFKA_HEAP_OPTS:                                "-Xmx512m -Xms256m"
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 9092 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    volumes:
+      - kafka-local-data:/var/lib/kafka/data
+    deploy:
+      resources:
+        limits:
+          memory: 768m
+    networks:
+      - internal
+
+  # ----------------------------------------------------------
+  # OpenBao — DEV MODE
+  # Auto-unseals. Token = dev-root-token (never changes).
+  # Data lost on restart — fine for local dev.
+  # ----------------------------------------------------------
+  openbao:
+    image: hashicorp/vault:1.15
+    container_name: decisionmesh-local-openbao-1
+    restart: unless-stopped
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID:  dev-root-token
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    command: server -dev
+    ports:
+      - "8200:8200"        # exposed so Quarkus on host can connect
+    healthcheck:
+      test: ["CMD-SHELL", "vault status -address=http://127.0.0.1:8200 > /dev/null 2>&1; exit 0"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 192m
+    networks:
+      - internal
+
+  # ----------------------------------------------------------
+  # Ollama — disable if not needed to save RAM
+  # ----------------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: decisionmesh-local-ollama-1
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags > /dev/null"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    volumes:
+      - ollama-local-data:/root/.ollama
+    deploy:
+      resources:
+        limits:
+          memory: 3g
+    networks:
+      - internal
+
+volumes:
+  postgres-local-data:
+  kafka-local-data:
+  ollama-local-data:
