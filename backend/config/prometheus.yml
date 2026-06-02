@@ -1,20 +1,30 @@
 # ============================================================
-# prometheus.yml — DecisionMesh local monitoring
+# prometheus.yml — DecisionMesh monitoring
 # Place at: backend/config/prometheus.yml
 # ============================================================
 global:
   scrape_interval:     15s
   evaluation_interval: 15s
   external_labels:
-    environment: local
+    environment: production
+
+# ── Alerting rules ────────────────────────────────────────────────────────────
+rule_files:
+  - /etc/prometheus/alerts.yml
 
 scrape_configs:
 
-  # Quarkus API — exposes /q/metrics (Prometheus format)
-  # Quarkus runs on host (not Docker) in local dev
+  # Prod API
   - job_name: 'decisionmesh-api'
     static_configs:
-      - targets: ['host.docker.internal:8080']
+      - targets: ['dm-api:8080']
+    metrics_path: '/q/metrics'
+    scrape_interval: 10s
+
+  # Staging API
+  - job_name: 'decisionmesh-api-staging'
+    static_configs:
+      - targets: ['dm-api-staging:8081']
     metrics_path: '/q/metrics'
     scrape_interval: 10s
 
