@@ -19,35 +19,37 @@ jobs:
       - name: Checkout infra repo
         uses: actions/checkout@v4
 
-      - name: Deploy infra changes to Hetzner
-        uses: appleboy/ssh-action@v1.2.1
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
         with:
-          host: ${{ secrets.HETZNER_HOST }}
-          username: ${{ secrets.HETZNER_USER }}
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          script: |
-            set -e
-            cd /opt/decisionmesh/infra
+          ssh-private-key: ${{ secrets.HETZNER_SSH_KEY }}
 
-            echo "=== Pulling latest infra changes ==="
-            git fetch origin main
-            git reset --hard origin/main
+      - name: Add Hetzner to known hosts
+        run: ssh-keyscan -H ${{ secrets.HETZNER_HOST }} >> ~/.ssh/known_hosts
 
-            echo "=== Reloading Caddy ==="
-            docker compose -f backend/docker-compose.gateway.yml restart
+      - name: Pull latest infra changes
+        run: |
+          ssh ${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }} \
+            'cd /opt/decisionmesh/infra && git fetch origin main && git reset --hard origin/main'
 
-            echo "=== Reloading Prometheus ==="
-            docker compose -f backend/docker-compose.monitoring.yml up -d --force-recreate prometheus
+      - name: Reload Caddy
+        run: |
+          ssh ${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }} \
+            'docker compose -f /opt/decisionmesh/infra/backend/docker-compose.gateway.yml restart'
 
-            echo "=== Reconnecting networks ==="
-            docker network connect decisionmesh_internal decisionmesh-prometheus 2>/dev/null || true
-            docker network connect decisionmesh-staging_internal decisionmesh-prometheus 2>/dev/null || true
-            docker network connect decisionmesh_internal decisionmesh-grafana 2>/dev/null || true
-            docker network connect decisionmesh-staging_internal decisionmesh-grafana 2>/dev/null || true
+      - name: Reload Prometheus
+        run: |
+          ssh ${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }} \
+            'docker compose -f /opt/decisionmesh/infra/backend/docker-compose.monitoring.yml up -d --force-recreate prometheus'
 
-            echo "=== Verifying health ==="
-            sleep 10
-            curl -sf https://api.decimeshi.com/health && echo "Prod API: OK" || echo "Prod API: WARN"
-            curl -sf https://api-staging.decimeshi.com/health && echo "Staging API: OK" || echo "Staging API: WARN"
+      - name: Reconnect networks
+        run: |
+          ssh ${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }} \
+            'docker network connect decisionmesh_internal decisionmesh-prometheus 2>/dev/null || true && docker network connect decisionmesh-staging_internal decisionmesh-prometheus 2>/dev/null || true && docker network connect decisionmesh_internal decisionmesh-grafana 2>/dev/null || true && docker network connect decisionmesh-staging_internal decisionmesh-grafana 2>/dev/null || true'
 
-            echo "=== Infra deploy complete ==="
+      - name: Verify health
+        run: |
+          sleep 15
+          curl -sf https://api.decimeshi.com/health && echo "Prod API: OK" || echo "Prod API: WARN"
+          curl -sf https://api-staging.decimeshi.com/health && echo "Staging API: OK" || echo "Staging API: WARN"
+          echo "=== Infra deploy complete ==="
