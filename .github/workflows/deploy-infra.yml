@@ -1,0 +1,54 @@
+name: Deploy — Infra Changes
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/Caddyfile'
+      - 'backend/docker-compose*.yml'
+      - 'backend/config/**'
+      - 'scripts/**'
+
+  workflow_dispatch:
+
+jobs:
+  deploy-infra:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout infra repo
+        uses: actions/checkout@v4
+
+      - name: Deploy infra changes to Hetzner
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/decisionmesh/infra
+
+            echo "=== Pulling latest infra changes ==="
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "=== Reloading Caddy ==="
+            docker compose -f backend/docker-compose.gateway.yml restart
+
+            echo "=== Reloading Prometheus ==="
+            docker compose -f backend/docker-compose.monitoring.yml up -d --force-recreate prometheus
+
+            echo "=== Reconnecting networks ==="
+            docker network connect decisionmesh_internal decisionmesh-prometheus 2>/dev/null || true
+            docker network connect decisionmesh-staging_internal decisionmesh-prometheus 2>/dev/null || true
+            docker network connect decisionmesh_internal decisionmesh-grafana 2>/dev/null || true
+            docker network connect decisionmesh-staging_internal decisionmesh-grafana 2>/dev/null || true
+
+            echo "=== Verifying health ==="
+            sleep 10
+            curl -sf https://api.decimeshi.com/health && echo "Prod API: OK" || echo "Prod API: WARN"
+            curl -sf https://api-staging.decimeshi.com/health && echo "Staging API: OK" || echo "Staging API: WARN"
+
+            echo "=== Infra deploy complete ==="
