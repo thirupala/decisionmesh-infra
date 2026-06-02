@@ -19,32 +19,35 @@ jobs:
       - name: Checkout infra repo
         uses: actions/checkout@v4
 
-      - name: Setup SSH agent
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.HETZNER_SSH_KEY }}
-
-      - name: Add Hetzner to known hosts
-        run: ssh-keyscan -H ${{ secrets.HETZNER_HOST }} >> ~/.ssh/known_hosts
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.HETZNER_SSH_KEY }}" | base64 -d > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.HETZNER_HOST }} >> ~/.ssh/known_hosts
 
       - name: Pull latest infra changes
         run: |
-          ssh ${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }} \
+          ssh -i ~/.ssh/id_ed25519 \
+            ${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }} \
             'cd /opt/decisionmesh/infra && git fetch origin main && git reset --hard origin/main'
 
       - name: Reload Caddy
         run: |
-          ssh ${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }} \
+          ssh -i ~/.ssh/id_ed25519 \
+            ${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }} \
             'docker compose -f /opt/decisionmesh/infra/backend/docker-compose.gateway.yml restart'
 
       - name: Reload Prometheus
         run: |
-          ssh ${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }} \
+          ssh -i ~/.ssh/id_ed25519 \
+            ${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }} \
             'docker compose -f /opt/decisionmesh/infra/backend/docker-compose.monitoring.yml up -d --force-recreate prometheus'
 
       - name: Reconnect networks
         run: |
-          ssh ${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }} \
+          ssh -i ~/.ssh/id_ed25519 \
+            ${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }} \
             'docker network connect decisionmesh_internal decisionmesh-prometheus 2>/dev/null || true && docker network connect decisionmesh-staging_internal decisionmesh-prometheus 2>/dev/null || true && docker network connect decisionmesh_internal decisionmesh-grafana 2>/dev/null || true && docker network connect decisionmesh-staging_internal decisionmesh-grafana 2>/dev/null || true'
 
       - name: Verify health
