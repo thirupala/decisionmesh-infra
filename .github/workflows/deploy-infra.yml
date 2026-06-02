@@ -20,36 +20,46 @@ jobs:
       - name: Checkout infra repo
         uses: actions/checkout@v4
 
-      - name: Deploy infra changes to Hetzner
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.HETZNER_HOST }}
-          username: ${{ secrets.HETZNER_USER }}
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          port: 22
-          script: |
-            set -e
-            cd /opt/decisionmesh/infra
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.HETZNER_SSH_KEY }}" | base64 -d > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.HETZNER_HOST }} >> ~/.ssh/known_hosts
 
-            echo "=== Pulling latest infra changes ==="
-            git fetch origin main
-            git reset --hard origin/main
+      - name: Pull latest infra changes
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+            ${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }} \
+            'cd /opt/decisionmesh/infra && git fetch origin main && git reset --hard origin/main'
 
-            echo "=== Reloading Caddy ==="
-            docker compose -f backend/docker-compose.gateway.yml restart
+      - name: Reload Caddy
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+            ${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }} \
+            'docker compose -f /opt/decisionmesh/infra/backend/docker-compose.gateway.yml restart'
 
-            echo "=== Reloading Prometheus ==="
-            docker compose -f backend/docker-compose.monitoring.yml up -d --force-recreate prometheus
+      - name: Reload Prometheus
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+            ${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }} \
+            'docker compose -f /opt/decisionmesh/infra/backend/docker-compose.monitoring.yml up -d --force-recreate prometheus'
 
-            echo "=== Reconnecting networks ==="
+      - name: Reconnect networks
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+            ${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }} << 'ENDSSH'
             docker network connect decisionmesh_internal decisionmesh-prometheus 2>/dev/null || true
             docker network connect decisionmesh-staging_internal decisionmesh-prometheus 2>/dev/null || true
             docker network connect decisionmesh_internal decisionmesh-grafana 2>/dev/null || true
             docker network connect decisionmesh-staging_internal decisionmesh-grafana 2>/dev/null || true
+          ENDSSH
 
-            echo "=== Verifying health ==="
-            sleep 10
-            curl -sf https://api.decimeshi.com/health && echo "Prod API: OK" || echo "Prod API: WARN"
-            curl -sf https://api-staging.decimeshi.com/health && echo "Staging API: OK" || echo "Staging API: WARN"
+      - name: Verify health
+        run: |
+          sleep 15
+          curl -sf https://api.decimeshi.com/health && echo "Prod API: OK" || echo "Prod API: WARN"
+          curl -sf https://api-staging.decimeshi.com/health && echo "Staging API: OK" || echo "Staging API: WARN"
 
-            echo "=== Infra deploy complete ==="
+      - name: Done
+        run: echo "=== Infra deploy complete ==="
