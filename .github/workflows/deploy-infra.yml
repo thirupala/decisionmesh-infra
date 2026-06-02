@@ -20,13 +20,17 @@ jobs:
       - name: Checkout infra repo
         uses: actions/checkout@v4
 
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.HETZNER_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.HETZNER_HOST }} >> ~/.ssh/known_hosts
+
       - name: Deploy infra changes to Hetzner
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.HETZNER_HOST }}
-          username: ${{ secrets.HETZNER_USER }}
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          script: |
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }} << 'ENDSSH'
             set -e
             cd /opt/decisionmesh/infra
 
@@ -52,3 +56,4 @@ jobs:
             curl -sf https://api-staging.decimeshi.com/health && echo "Staging API: OK" || echo "Staging API: WARN"
 
             echo "=== Infra deploy complete ==="
+          ENDSSH
