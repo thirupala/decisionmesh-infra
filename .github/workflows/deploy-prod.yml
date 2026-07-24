@@ -36,9 +36,9 @@ jobs:
             cd /opt/decisionmesh/infra
 
             echo "Pulling latest prod image..."
-            docker pull ghcr.io/thirupala/decisionmesh:${{ steps.tag.outputs.tag }}
+            docker pull ghcr.io/decimeshi/decisionmesh:${{ steps.tag.outputs.tag }}
 
-            sed -i 's|API_IMAGE=.*|API_IMAGE=ghcr.io/thirupala/decisionmesh:${{ steps.tag.outputs.tag }}|' .env.prod
+            sed -i 's|API_IMAGE=.*|API_IMAGE=ghcr.io/decimeshi/decisionmesh:${{ steps.tag.outputs.tag }}|' .env.prod
 
             echo "Unsealing OpenBao..."
             bash scripts/unseal-prod.sh

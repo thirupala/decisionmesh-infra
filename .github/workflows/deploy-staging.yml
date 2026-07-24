@@ -36,9 +36,9 @@ jobs:
             cd /opt/decisionmesh/infra
 
             echo "Pulling latest staging image..."
-            docker pull ghcr.io/thirupala/decisionmesh:${{ steps.tag.outputs.tag }}
+            docker pull ghcr.io/decimeshi/decisionmesh:${{ steps.tag.outputs.tag }}
 
-            sed -i 's|API_IMAGE=.*|API_IMAGE=ghcr.io/thirupala/decisionmesh:${{ steps.tag.outputs.tag }}|' .env.staging
+            sed -i 's|API_IMAGE=.*|API_IMAGE=ghcr.io/decimeshi/decisionmesh:${{ steps.tag.outputs.tag }}|' .env.staging
 
             echo "Recreating staging API..."
             docker compose -f backend/docker-compose.staging.yml --env-file .env.staging \
