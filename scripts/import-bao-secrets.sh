@@ -38,7 +38,7 @@ fi
 
 cd /opt/decisionmesh/infra
 [[ -f $ENV_FILE ]] || fail "$ENV_FILE not found."
-VAULT_TOKEN=$(grep VAULT_TOKEN "$ENV_FILE" | cut -d= -f2)
+VAULT_TOKEN=$(grep "^VAULT_TOKEN=" "$ENV_FILE" | cut -d= -f2)
 
 info "Importing secrets to $ENV OpenBao ($CONTAINER)..."
 
