@@ -29,7 +29,7 @@ ok "Directories created"
 
 info "Cloning repo..."
 su - decisionmesh -c "
-  git clone https://github.com/thirupala/decisionmesh.git /opt/decisionmesh/infra
+  git clone https://github.com/decimeshi/decisionmesh.git /opt/decisionmesh/infra
 "
 ok "Repo cloned"
 

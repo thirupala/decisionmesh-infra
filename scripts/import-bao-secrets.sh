@@ -45,17 +45,17 @@ info "Importing secrets to $ENV OpenBao ($CONTAINER)..."
 # ============================================================
 # SECRET VALUES — edit these before running
 # ============================================================
-OPENAI_KEY="sk-proj-..."
-ANTHROPIC_KEY="sk-ant-api03-..."
-GEMINI_KEY="AIzaSy..."
-DEEPSEEK_KEY="sk-..."
-STRIPE_KEY="sk_test_..."
-RAZORPAY_KEY_ID="rzp_test_..."
-RAZORPAY_KEY_SECRET="..."
-RAZORPAY_WEBHOOK_SECRET="..."
-MAILER_PASSWORD="..."
+OPENAI_KEY="${OPENAI_API_KEY:-}"
+ANTHROPIC_KEY="${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY}"
+GEMINI_KEY="${GEMINI_API_KEY:-}"
+DEEPSEEK_KEY="${DEEPSEEK_API_KEY:-}"
+STRIPE_KEY="${STRIPE_API_KEY:-}"
+RAZORPAY_KEY_ID="${RAZORPAY_KEY_ID:-}"
+RAZORPAY_KEY_SECRET="${RAZORPAY_KEY_SECRET:-}"
+RAZORPAY_WEBHOOK_SECRET="${RAZORPAY_WEBHOOK_SECRET:-}"
+MAILER_PASSWORD="${MAILER_PASSWORD:-}"
 MAILER_USERNAME="thirupala@gmail.com"
-ZITADEL_TOKEN="..."
+ZITADEL_TOKEN="${ZITADEL_TOKEN:-}"
 DB_PASSWORD=$(grep DB_PASSWORD "$ENV_FILE" | cut -d= -f2)
 # ============================================================
 

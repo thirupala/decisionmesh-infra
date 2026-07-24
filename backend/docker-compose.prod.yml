@@ -15,6 +15,7 @@ services:
       QUARKUS_HTTP_PORT: 8080
       VAULT_TOKEN:       ${VAULT_TOKEN:?VAULT_TOKEN must be set in .env.prod}
       VAULT_ADDR:        http://openbao:8200
+      QUARKUS_REDIS_PASSWORD: ${REDIS_PASSWORD}
     depends_on:
       postgres:
         condition: service_healthy
@@ -69,7 +70,7 @@ services:
       start_period: 15s
     volumes:
       - openbao-data:/openbao/data
-      - ../config/openbao.hcl:/openbao/config/openbao.hcl:ro
+      - /home/decisionmesh/dm-config/openbao.hcl:/openbao/config/openbao.hcl:ro
     deploy:
       resources:
         limits:

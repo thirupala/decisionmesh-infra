@@ -20,7 +20,7 @@ services:
     volumes:
       - caddy-data:/data
       - caddy-config:/config
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - /home/decisionmesh/dm-config/Caddyfile:/etc/caddy/Caddyfile:ro
     networks:
       - prod_net
       - staging_net

@@ -49,7 +49,7 @@ decisionmesh-infra/
 ## First-time Hetzner setup
 
 ```bash
-git clone https://github.com/thirupala/decisionmesh-infra.git /opt/decisionmesh/infra
+git clone https://github.com/decimeshi/decisionmesh-infra.git /opt/decisionmesh/infra
 cd /opt/decisionmesh/infra
 
 cp backend/.env.staging.example .env.staging  # fill values

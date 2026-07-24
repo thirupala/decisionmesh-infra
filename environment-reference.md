@@ -38,7 +38,7 @@
 ## Cloudflare Pages Projects
 
 ### Production: `decisionmesh-ui`
-- **Git repo:** thirupala/decisionmesh-ui
+- **Git repo:** decimeshi/decisionmesh-ui
 - **Production branch:** main
 - **Build command:** `npm run build`
 - **Build output:** dist
@@ -46,7 +46,7 @@
 - **Env file used:** `.env.production` (on main branch)
 
 ### Staging: `decisionmesh-ui-staging`
-- **Git repo:** thirupala/decisionmesh-ui
+- **Git repo:** decimeshi/decisionmesh-ui
 - **Production branch:** staging
 - **Build command:** `npm run build` (staging branch uses `vite build --mode staging`)
 - **Build output:** dist
@@ -96,7 +96,7 @@ VITE_ZITADEL_SILENT_REDIRECT_URI=https://decimeshi.com/auth/silent-callback
 ### Production
 | Container                  | Image                                   | Port (internal) |
 |----------------------------|-----------------------------------------|-----------------|
-| dm-api                     | ghcr.io/thirupala/decisionmesh:latest   | 8080            |
+| dm-api                     | ghcr.io/decimeshi/decisionmesh:latest   | 8080            |
 | decisionmesh-postgres-1    | pgvector/pgvector:pg16                  | 5432            |
 | decisionmesh-redis-1       | redis:7-alpine                          | 6379            |
 | decisionmesh-kafka-1       | apache/kafka:3.7.0                      | 9092            |
@@ -107,7 +107,7 @@ VITE_ZITADEL_SILENT_REDIRECT_URI=https://decimeshi.com/auth/silent-callback
 ### Staging
 | Container                          | Image                                   | Port (internal) |
 |------------------------------------|-----------------------------------------|-----------------|
-| dm-api-staging                     | ghcr.io/thirupala/decisionmesh:staging  | 8081            |
+| dm-api-staging                     | ghcr.io/decimeshi/decisionmesh:staging  | 8081            |
 | decisionmesh-staging-postgres-1    | pgvector/pgvector:pg16                  | 5432            |
 | decisionmesh-staging-redis-1       | redis:7-alpine                          | 6379            |
 | decisionmesh-staging-kafka-1       | apache/kafka:3.7.0                      | 9092            |
@@ -276,12 +276,12 @@ bash scripts/import-bao-secrets.sh --env prod
 ### Deploy manually
 ```bash
 # Staging
-docker pull ghcr.io/thirupala/decisionmesh:staging
+docker pull ghcr.io/decimeshi/decisionmesh:staging
 docker compose -f backend/docker-compose.staging.yml --env-file .env.staging \
   up -d --no-deps --force-recreate api
 
 # Prod
-docker pull ghcr.io/thirupala/decisionmesh:latest
+docker pull ghcr.io/decimeshi/decisionmesh:latest
 docker compose -f backend/docker-compose.yml -f backend/docker-compose.prod.yml \
   --env-file .env.prod up -d --no-deps --force-recreate api
 ```
