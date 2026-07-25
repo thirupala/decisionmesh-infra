@@ -20,3 +20,9 @@ target/
 # OS
 .DS_Store
 Thumbs.db
+
+seed-vault.sh
+bao-backup.json
+secrets/
+.env
+.env.*
