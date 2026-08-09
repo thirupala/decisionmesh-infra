@@ -44,6 +44,28 @@ jobs:
             docker compose -f backend/docker-compose.staging.yml --env-file .env.staging \
               up -d --no-deps --force-recreate api
 
-            sleep 15
+            echo "Waiting for dm-api-staging to report healthy on /health..."
+            # Same gap as prod had: dm-api-staging has no docker-level healthcheck,
+            # so `up -d` reports success the moment the process starts even if it
+            # then crash-loops. Staging's api listens on 8081 (not 8080) and sits
+            # on the decisionmesh-staging_internal network — its base image has
+            # neither curl nor wget, so check via a disposable curl container.
+            HEALTHY=false
+            for i in $(seq 1 12); do
+              if docker run --rm --network decisionmesh-staging_internal curlimages/curl:latest \
+                   -sf http://api:8081/health > /dev/null 2>&1; then
+                HEALTHY=true
+                break
+              fi
+              echo "  attempt $i/12: not healthy yet, waiting 5s..."
+              sleep 5
+            done
+
             echo "=== Staging API logs ==="
-            docker logs dm-api-staging --tail 20
+            docker logs dm-api-staging --tail 50
+
+            if [ "$HEALTHY" != "true" ]; then
+              echo "::error::dm-api-staging did not report healthy on /health within 60s — see logs above for the actual boot failure."
+              exit 1
+            fi
+            echo "dm-api-staging is healthy."
