@@ -50,11 +50,12 @@ ANTHROPIC_KEY="${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY}"
 GEMINI_KEY="${GEMINI_API_KEY:-}"
 DEEPSEEK_KEY="${DEEPSEEK_API_KEY:-}"
 STRIPE_KEY="${STRIPE_API_KEY:-}"
+STRIPE_WEBHOOK_SECRET="${STRIPE_WEBHOOK_SECRET:-}"
 RAZORPAY_KEY_ID="${RAZORPAY_KEY_ID:-}"
 RAZORPAY_KEY_SECRET="${RAZORPAY_KEY_SECRET:-}"
 RAZORPAY_WEBHOOK_SECRET="${RAZORPAY_WEBHOOK_SECRET:-}"
 MAILER_PASSWORD="${MAILER_PASSWORD:-}"
-MAILER_USERNAME="thirupala@gmail.com"
+MAILER_USERNAME="${MAILER_USERNAME:-demo@decimeshi.com}"
 ZITADEL_TOKEN="${ZITADEL_TOKEN:-}"
 DB_PASSWORD=$(grep DB_PASSWORD "$ENV_FILE" | cut -d= -f2)
 # ============================================================
@@ -79,7 +80,8 @@ docker exec "$CONTAINER" sh -c "
     llm.deepseek.api-key='$DEEPSEEK_KEY'
 
   $VAULT_CMD kv put secret/decisionmesh/stripe \
-    stripe.secret.key='$STRIPE_KEY'
+    stripe.secret.key='$STRIPE_KEY' \
+    stripe.webhook.secret='$STRIPE_WEBHOOK_SECRET'
 
   $VAULT_CMD kv put secret/decisionmesh/razorpay \
     razorpay.key.id='$RAZORPAY_KEY_ID' \
@@ -88,7 +90,7 @@ docker exec "$CONTAINER" sh -c "
 
   $VAULT_CMD kv put secret/decisionmesh/email \
     quarkus.mailer.password='$MAILER_PASSWORD' \
-    username='$MAILER_USERNAME'
+    quarkus.mailer.username='$MAILER_USERNAME'
 
   $VAULT_CMD kv put secret/decisionmesh/auth \
     vault_token='$VAULT_TOKEN' \

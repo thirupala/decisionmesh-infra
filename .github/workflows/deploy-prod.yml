@@ -47,6 +47,31 @@ jobs:
             docker compose -f backend/docker-compose.yml -f backend/docker-compose.prod.yml \
               --env-file .env.prod up -d --no-deps --force-recreate api
 
-            sleep 15
+            echo "Waiting for dm-api to report healthy on /health..."
+            # dm-api has no docker-level healthcheck (unlike postgres/redis/kafka/
+            # openbao/ollama), so `docker compose up -d` reports success the moment
+            # the process starts — even if it then crash-loops on a config error.
+            # dm-api's port isn't published to the host (only Caddy's 80/443 are;
+            # api is reached over the decisionmesh_internal network), and its base
+            # image (eclipse-temurin JRE) has neither curl nor wget installed, so
+            # neither "curl from the host" nor "docker exec ... curl" work here.
+            # Use a disposable curl container on the same internal network instead.
+            HEALTHY=false
+            for i in $(seq 1 12); do
+              if docker run --rm --network decisionmesh_internal curlimages/curl:latest \
+                   -sf http://api:8080/health > /dev/null 2>&1; then
+                HEALTHY=true
+                break
+              fi
+              echo "  attempt $i/12: not healthy yet, waiting 5s..."
+              sleep 5
+            done
+
             echo "=== Prod API logs ==="
-            docker logs dm-api --tail 20
+            docker logs dm-api --tail 50
+
+            if [ "$HEALTHY" != "true" ]; then
+              echo "::error::dm-api did not report healthy on /health within 60s — see logs above for the actual boot failure."
+              exit 1
+            fi
+            echo "dm-api is healthy."
