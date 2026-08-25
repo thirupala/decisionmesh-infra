@@ -14,7 +14,7 @@ DecisionMesh has implemented SOC 2 technical controls including:
 - ✅ **Vulnerability Scanning** — Trivy scans every Docker image on every CI build; results published to GitHub Security tab
 - ✅ **Penetration Testing** — OWASP ZAP baseline scan: 0 failures, 66 checks passed (June 2026)
 - ✅ **Encrypted Secrets Management** — all API keys and credentials stored in OpenBao (HashiCorp Vault compatible); never in code or config files
-- ✅ **Immutable Audit Logging** — every AI governance decision is logged in an append-only audit trail protected by database triggers
+- ✅ **Tamper-Evident Audit Logging** — every AI governance decision is logged in an append-only audit trail (ORM-enforced no-update policy); a separate SHA-256 hash-chained governance ledger provides cryptographic tamper evidence for intent replay
 - ✅ **GDPR Right to Erasure** — automated erasure API compliant with GDPR Article 17; 30-day SLA
 - ✅ **Data Retention Policy** — automated nightly enforcement; 7-year retention for financial/audit records
 - ✅ **Backup Verification** — monthly automated backup restore and row-count verification
@@ -34,7 +34,7 @@ DecisionMesh has implemented SOC 2 technical controls including:
 | SOC 2 Type I | Controls implemented — formal audit pending |
 | SOC 2 Type II | Pursuing — observation period started June 2026 |
 | GDPR | Compliant — DPA available on request |
-| EU AI Act | Compliant by design — immutable audit trail, intent classification, policy enforcement |
+| EU AI Act | Compliant by design — tamper-evident audit trail, intent classification, policy enforcement |
 | DPDPA 2023 | Compliant — data residency in EU (Hetzner, Germany) |
 
 ---
