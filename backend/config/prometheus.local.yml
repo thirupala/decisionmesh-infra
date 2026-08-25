@@ -1,0 +1,31 @@
+# ============================================================
+# prometheus.local.yml — DecisionMesh LOCAL DEV monitoring
+#
+# NOT used by docker-compose.monitoring.yml by default — that file mounts
+# config/prometheus.yml, which is the SAME file staging/prod deploy (targets
+# dm-api:8080/dm-api-staging:8081, container DNS names that only resolve on
+# those hosts' own docker networks). This file targets host.docker.internal
+# instead, for scraping a locally-run `mvn quarkus:dev` process (or any
+# host-side Quarkus process) from a Prometheus container.
+#
+# Use it as an override, not a replacement — it deliberately does not touch
+# config/prometheus.yml:
+#   docker compose -f docker-compose.monitoring.yml \
+#     -f docker-compose.monitoring.local.yml up -d
+# (docker-compose.monitoring.local.yml just remounts this file over the
+# prometheus service's config — see that file's own header for why it's a
+# separate overlay rather than editing docker-compose.monitoring.yml itself.)
+# ============================================================
+global:
+  scrape_interval:     5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: 'decisionmesh-local-host'
+    metrics_path: '/q/metrics'
+    static_configs:
+      - targets: ['host.docker.internal:8080']
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

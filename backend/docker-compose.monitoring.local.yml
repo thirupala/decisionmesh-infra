@@ -1,0 +1,20 @@
+# ============================================================
+# docker-compose.monitoring.local.yml — overlay for local dev
+#
+# Remounts config/prometheus.local.yml over docker-compose.monitoring.yml's
+# prometheus service, instead of the shared config/prometheus.yml (which
+# staging/prod also use — targets container DNS names that don't resolve
+# locally). Kept as a separate overlay file, not a change to
+# docker-compose.monitoring.yml itself, so the base file's behavior for
+# anyone else using it stays untouched.
+#
+# Usage:
+#   docker compose -f docker-compose.monitoring.yml \
+#                  -f docker-compose.monitoring.local.yml up -d
+# ============================================================
+services:
+  prometheus:
+    volumes:
+      - ./config/prometheus.local.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
