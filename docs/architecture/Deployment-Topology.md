@@ -85,25 +85,26 @@ is mechanically straightforward. Two things are NOT that simple:
    is a Zitadel-specific custom-claim convention. A different provider
    (self-hosted Zitadel, Keycloak, Okta, Auth0) would need its own claim
    path, so this can't just be copied to a new profile unchanged.
-2. **`OnboardingService` calls Zitadel's own management API directly** —
-   `PUT {zitadelUrl}/management/v1/users/{userId}/metadata/{key}` to write
-   the tenant/account association back into the user's Zitadel profile
-   (`writeKey()`), and `GET {zitadelUrl}/v2/users/{userId}` to read it back
-   (`fetchZitadelProfile()`). This is how a login's `tenantId` JWT claim
-   gets populated (via a Zitadel Action reading that same metadata) — the
-   tenant-resolution mechanism itself is Zitadel-specific, not just the
-   login screen. A non-Zitadel deployment needs this replaced (e.g.
-   resolving tenant from the local `users` table by the JWT's `sub` claim
-   instead of trusting an injected custom claim), not just a different
-   `auth-server-url`.
+2. ~~`OnboardingService` calls Zitadel's own management API directly...~~
+   **Fixed 2026-08-25.** `OnboardingService` still writes tenant/account
+   metadata to Zitadel (`writeKey()`, `PUT .../management/v1/users/{userId}/metadata/{key}`)
+   and reads a profile back (`fetchZitadelProfile()`), but neither is
+   load-bearing for tenant resolution any more — both were already
+   best-effort/non-fatal (failures logged, swallowed). `TenantContextFilter`
+   now resolves `tenantId` from the local `users` table (by the JWT's
+   `sub` claim) *first*, falling back to a JWT `tenantId` claim only when
+   no DB row exists yet (e.g. a brand-new user whose row hasn't committed).
+   A JWT that never carries a custom `tenantId` claim at all — the case
+   for any OIDC provider with no Zitadel-Action equivalent injecting one —
+   now resolves correctly through the DB path alone. See
+   `TenantContextFilter.resolveTenantId()` in `decisionmesh-security`.
 
 Zitadel itself is self-hostable in general — nothing here is wired to use
-a self-hosted instance today, and doing so would still hit both points
-above. Making this mode real requires (a) OIDC config as a genuine
-per-deployment setting including the claim path, (b) replacing the
-tenant-resolution mechanism with something IdP-agnostic, and (c) a
-self-hosted Zitadel (or equivalent OIDC provider, once (b) removes the
-Zitadel-API dependency) the customer operates.
+a self-hosted instance today. Making this mode real now requires only
+(a) OIDC config as a genuine per-deployment setting including the claim
+path, and (b) a self-hosted Zitadel (or equivalent OIDC provider) the
+customer operates — the tenant-resolution replacement point (2) used to
+require is done.
 
 **Solvable today — data plane.** Postgres, Redis, Kafka, and OpenBao are
 already bundled and self-hostable — `decisionmesh-infra/backend/docker-compose.yml`
@@ -129,13 +130,15 @@ those entity types.
 
 **Bottom line:** an honest on-prem/air-gapped offering today would need
 (1) OIDC config genuinely made per-deployment (issuer, client-id, and the
-Zitadel-specific roles claim path), (2) the tenant-resolution mechanism
-replaced with something that doesn't depend on Zitadel's management API
-for metadata write-back, and (3) an enforced Ollama-only adapter policy
-for that deployment. None of the three are in place. Anyone asking
-whether DecisionMesh can run fully air-gapped today should be told no,
-with these three items as the concrete path to yes — (1) and (3) are
-config/deployment-discipline work, (2) is the one that's a real
+Zitadel-specific roles claim path) and (2) an enforced Ollama-only adapter
+policy for that deployment — both config/deployment-discipline work, not
+code. The tenant-resolution mechanism no longer depends on Zitadel's
+management API (see point 2 above, fixed 2026-08-25). What remains is
+still real: neither (1) nor (2) is actually configured/enforced for any
+deployment today, and a genuine alternate-OIDC-provider deployment has
+never been tested end-to-end against this codebase — so the honest answer
+to "can DecisionMesh run fully air-gapped today" is still no, but the
+concrete path to yes is now two deployment-configuration items, not an
 architecture change.
 
 ---
@@ -144,7 +147,7 @@ architecture change.
 
 | Crosses the perimeter | Shared SaaS | Dedicated single-tenant | On-prem / air-gapped |
 |---|---|---|---|
-| Zitadel Cloud (identity) | Yes | Yes | **Blocker — OIDC issuer is portable config, but tenant resolution depends on Zitadel's management API** |
+| Zitadel Cloud (identity) | Yes | Yes | **Config only — OIDC issuer/claim-path are portable properties; tenant resolution no longer depends on Zitadel's management API. Needs per-deployment config and a real alternate-OIDC test, not an architecture change.** |
 | Hosted LLM provider APIs | Yes (per routed request) | Yes, unless Ollama-only | Must be Ollama-only to avoid |
 | Stripe / Razorpay | Yes (billing only) | Optional — disable for direct contracts | Should be disabled |
 | Postgres / Redis / Kafka / OpenBao | DecisionMesh-hosted (Hetzner) | Customer or DecisionMesh infra | Self-hosted — already solved |

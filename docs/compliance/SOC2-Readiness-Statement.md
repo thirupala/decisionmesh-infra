@@ -35,7 +35,7 @@ DecisionMesh has implemented SOC 2 technical controls including:
 | SOC 2 Type II | Pursuing — observation period started June 2026 |
 | GDPR | Compliant — DPA available on request |
 | EU AI Act | Compliant by design — tamper-evident audit trail, intent classification, policy enforcement |
-| DPDPA 2023 | Compliant — data residency in EU (Hetzner, Germany) |
+| DPDPA 2023 | In progress — India-specific PII-pattern detection (Aadhaar/PAN) and a per-tenant residency-enforcement engine exist; no India-region hosting is currently provisioned (Hetzner EU only), so data localization is not yet substantiated |
 
 ---
 

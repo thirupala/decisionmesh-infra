@@ -90,7 +90,15 @@ services:
     container_name: decisionmesh-local-kafka-1
     restart: unless-stopped
     ports:
-      - "9092:9092"        # exposed so Quarkus on host can connect
+      # Host 9092 -> container 9094 (the EXTERNAL listener), NOT container 9092
+      # (PLAINTEXT). PLAINTEXT advertises "kafka:9092", which only resolves
+      # inside the compose network; EXTERNAL advertises "localhost:9092" (see
+      # KAFKA_ADVERTISED_LISTENERS below), which is what a host-side Quarkus
+      # process needs. Mapping host 9092 -> container 9092 (PLAINTEXT) let the
+      # initial bootstrap connection succeed, but every metadata refresh after
+      # that handed the client PLAINTEXT's "kafka:9092" address instead ->
+      # UnknownHostException once the client tried to actually produce.
+      - "9092:9094"
     environment:
       KAFKA_NODE_ID:                                  1
       KAFKA_PROCESS_ROLES:                            broker,controller
@@ -158,7 +166,16 @@ services:
     container_name: decisionmesh-local-ollama-1
     restart: unless-stopped
     ports:
-      - "11434:11434"
+      # Was 11434:11434 — collided with a native Windows Ollama install also
+      # bound to 11434 (C:\Users\thiru\AppData\Local\Programs\Ollama), which
+      # only had qwen2.5:7b pulled. Depending on which process actually
+      # answered a given connection, requests either hit this container
+      # (qwen3, worked) or the native app (404 "model not found") —
+      # confirmed live via `Get-NetTCPConnection -LocalPort 11434` showing
+      # both docker's relay AND the native ollama.exe on the same port.
+      # 11435 avoids the collision entirely; matching llm.ollama.base-url
+      # override lives in application-dev.properties.
+      - "11435:11434"
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags > /dev/null"]
       interval: 30s
@@ -170,7 +187,15 @@ services:
     deploy:
       resources:
         limits:
-          memory: 3g
+          # Was 3g — too low for any real model. Confirmed live: qwen3 alone
+          # needs 5.5GiB at inference time ("model requires more system
+          # memory (5.5 GiB) than is available (4.0 GiB)"). Docker Desktop's
+          # own VM has ~15GB total on this 32GB-RAM machine (Windows + IDE +
+          # the natively-running Quarkus JVM need the rest); 8g leaves
+          # headroom for Postgres/Redis/Kafka/Vault/Grafana/Prometheus
+          # alongside it, and comfortably fits every model in the current
+          # local test set (largest is Gemma 2 9B at ~5.5GB).
+          memory: 8g
     networks:
       - internal
 
